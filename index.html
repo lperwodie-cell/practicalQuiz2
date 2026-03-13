@@ -322,8 +322,9 @@ function makeChair(x, z, rotY) {
 }
 makeChair(0, -2.2, 0);
 makeChair(0,  2.2, Math.PI);
+makeChair(-2.2, 0, Math.PI / 2);
+makeChair( 2.2, 0, -Math.PI / 2);
 
-// ── Milo Tin
 function makeMiloTin(x, z) {
   const g = new THREE.Group();
   const canvas = document.createElement('canvas');
@@ -382,7 +383,6 @@ function makeMiloTin(x, z) {
 }
 makeMiloTin(-0.55, -0.4);
 
-// ── Milk Tin
 function makeMilkTin(x, z) {
   const g = new THREE.Group();
   const canvas2 = document.createElement('canvas');
