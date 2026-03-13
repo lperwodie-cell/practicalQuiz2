@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3D Table Scene – Practical Quiz</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a1a; overflow: hidden; font-family: 'Georgia', serif; }
+    #canvas-container { width: 100vw; height: 100vh; }
+    canvas { display: block; }
+    #ui-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 20px 28px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent);
+      pointer-events: none;
+      z-index: 10;
+    }
+    #title-block h1 {
+      font-size: 1.4rem;
+      color: #f0e6c8;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+    }
+    #title-block p {
+      font-size: 0.75rem;
+      color: #a89060;
+      letter-spacing: 0.18em;
+      margin-top: 3px;
+    }
+    #controls-hint {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.45);
+      text-align: right;
+      line-height: 1.8;
+    }
+    #bottom-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      padding: 14px 28px;
+      background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+      pointer-events: none;
+      z-index: 10;
+    }
+    .label-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      backdrop-filter: blur(6px);
+    }
+    .chip-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .label-chip span {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.75);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    #loader {
+      position: fixed; inset: 0;
+      background: #0a0a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      transition: opacity 0.8s ease;
+    }
+    #loader h2 {
+      color: #f0e6c8;
+      font-size: 1.2rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .loader-bar {
+      width: 220px; height: 2px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .loader-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #c8a96e, #e8d5a0);
+      animation: loadAnim 1.2s ease forwards;
+    }
+    @keyframes loadAnim {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loader">
+  <h2>Setting the Scene</h2>
+  <div class="loader-bar"><div class="loader-fill"></div></div>
+</div>
+
+<div id="canvas-container"></div>
+
+<div id="ui-overlay">
+  <div id="title-block">
+    <h1>Garden Table Scene</h1>
+    <p>3D Practical Quiz — Interactive Scene</p>
+  </div>
+  <div id="controls-hint">
+    🖱 Drag to rotate<br>
+    🔍 Scroll to zoom<br>
+    ✋ Right-drag to pan
+  </div>
+</div>
+
+<div id="bottom-bar">
+  <div class="label-chip"><div class="chip-dot" style="background:#4fc14f"></div><span>Table & Chairs</span></div>
+  <div class="label-chip"><div class="chip-dot" style="background:#3a7a3a"></div><span>Milo Tin</span></div>
+  <div class="label-chip"><div class="chip-dot" style="background:#e8e8e8"></div><span>Milk Tin</span></div>
+  <div class="label-chip"><div class="chip-dot" style="background:#c8a96e"></div><span>2 Cups</span></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const container = document.getElementById('canvas-container');
+const W = window.innerWidth, H = window.innerHeight;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.FogExp2(0xc8e8f0, 0.018);
+
+const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 200);
+camera.position.set(6, 5, 9);
+camera.lookAt(0, 1, 0);
+
+let isDragging = false, isRightDrag = false;
+let prevMouse = { x: 0, y: 0 };
+let spherical = { theta: 0.5, phi: 1.1, r: 12 };
+let target = new THREE.Vector3(0, 1, 0);
+
+function updateCamera() {
+  camera.position.set(
+    target.x + spherical.r * Math.sin(spherical.phi) * Math.sin(spherical.theta),
+    target.y + spherical.r * Math.cos(spherical.phi),
+    target.z + spherical.r * Math.sin(spherical.phi) * Math.cos(spherical.theta)
+  );
+  camera.lookAt(target);
+}
+updateCamera();
+
+renderer.domElement.addEventListener('mousedown', e => {
+  isDragging = true;
+  isRightDrag = e.button === 2;
+  prevMouse = { x: e.clientX, y: e.clientY };
+});
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = (e.clientX - prevMouse.x) * 0.005;
+  const dy = (e.clientY - prevMouse.y) * 0.005;
+  if (isRightDrag) {
+    const right = new THREE.Vector3();
+    camera.getWorldDirection(right);
+    right.cross(camera.up).normalize();
+    target.addScaledVector(right, -dx * 2);
+    target.y += dy * 2;
+  } else {
+    spherical.theta -= dx;
+    spherical.phi = Math.max(0.2, Math.min(Math.PI / 2.1, spherical.phi + dy));
+  }
+  prevMouse = { x: e.clientX, y: e.clientY };
+  updateCamera();
+});
+renderer.domElement.addEventListener('wheel', e => {
+  spherical.r = Math.max(4, Math.min(25, spherical.r + e.deltaY * 0.015));
+  updateCamera();
+}, { passive: true });
+
+const ambient = new THREE.AmbientLight(0xfff4e0, 0.6);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xfff8e7, 1.8);
+sun.position.set(8, 14, 6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 60;
+sun.shadow.camera.left = -15;
+sun.shadow.camera.right = 15;
+sun.shadow.camera.top = 15;
+sun.shadow.camera.bottom = -15;
+sun.shadow.bias = -0.001;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xc8e8ff, 0.4);
+fill.position.set(-6, 4, -4);
+scene.add(fill);
+const hemi = new THREE.HemisphereLight(0x87CEEB, 0x3a7a3a, 0.5);
+scene.add(hemi);
+
+function box(w, h, d, color, rough = 0.7, metal = 0) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+function cyl(rt, rb, h, segs, color, rough = 0.6, metal = 0) {
+  const g = new THREE.CylinderGeometry(rt, rb, h, segs);
+  const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+function sphere(r, color, rough = 0.5) {
+  const g = new THREE.SphereGeometry(r, 24, 16);
+  const m = new THREE.MeshStandardMaterial({ color, roughness: rough });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.castShadow = true;
+  return mesh;
+}
+
+const grassGeo = new THREE.CircleGeometry(18, 64);
+const grassMat = new THREE.MeshStandardMaterial({ color: 0x3a8c3a, roughness: 0.95 });
+const grass = new THREE.Mesh(grassGeo, grassMat);
+grass.rotation.x = -Math.PI / 2;
+grass.receiveShadow = true;
+scene.add(grass);
+
+const pathGeo = new THREE.CircleGeometry(3.5, 48);
+const pathMat = new THREE.MeshStandardMaterial({ color: 0xb0a090, roughness: 0.9 });
+const path = new THREE.Mesh(pathGeo, pathMat);
+path.rotation.x = -Math.PI / 2;
+path.position.y = 0.001;
+path.receiveShadow = true;
+scene.add(path);
+
+const TABLE_Y = 1.0;
+const tableGroup = new THREE.Group();
+scene.add(tableGroup);
+
+const tabletop = box(2.6, 0.1, 2.6, 0x8B5E3C, 0.4, 0.05);
+tabletop.position.y = TABLE_Y;
+tableGroup.add(tabletop);
+
+const trimMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.5 });
+const trimGeo = new THREE.BoxGeometry(2.65, 0.06, 0.06);
+[-1.3, 1.3].forEach(z => {
+  const t = new THREE.Mesh(trimGeo, trimMat);
+  t.position.set(0, TABLE_Y - 0.02, z);
+  t.castShadow = true;
+  tableGroup.add(t);
+});
+const trimGeo2 = new THREE.BoxGeometry(0.06, 0.06, 2.65);
+[-1.3, 1.3].forEach(x => {
+  const t = new THREE.Mesh(trimGeo2, trimMat);
+  t.position.set(x, TABLE_Y - 0.02, 0);
+  t.castShadow = true;
+  tableGroup.add(t);
+});
+
+const legPositions = [[-1.1, -1.1], [1.1, -1.1], [-1.1, 1.1], [1.1, 1.1]];
+legPositions.forEach(([x, z]) => {
+  const leg = cyl(0.07, 0.09, TABLE_Y - 0.05, 8, 0x6b4226, 0.5);
+  leg.position.set(x, (TABLE_Y - 0.05) / 2, z);
+  tableGroup.add(leg);
+});
+
+const brace1 = box(2.4, 0.05, 0.06, 0x7a5030, 0.6);
+brace1.position.set(0, 0.35, 0);
+tableGroup.add(brace1);
+const brace2 = box(0.06, 0.05, 2.4, 0x7a5030, 0.6);
+brace2.position.set(0, 0.35, 0);
+tableGroup.add(brace2);
+
+function makeChair(x, z, rotY) {
+  const g = new THREE.Group();
+  const seatColor = 0x8B5E3C;
+  const legColor  = 0x6b4226;
+  const seat = box(0.8, 0.07, 0.8, seatColor, 0.5);
+  seat.position.y = 0.52;
+  g.add(seat);
+  [[-0.33, -0.33], [0.33, -0.33], [-0.33, 0.33], [0.33, 0.33]].forEach(([lx, lz]) => {
+    const l = cyl(0.04, 0.05, 0.52, 8, legColor, 0.6);
+    l.position.set(lx, 0.26, lz);
+    g.add(l);
+  });
+  [-0.3, 0.3].forEach(lx => {
+    const post = cyl(0.03, 0.03, 0.6, 8, legColor, 0.6);
+    post.position.set(lx, 0.88, -0.36);
+    g.add(post);
+  });
+  [0.76, 0.95, 1.12].forEach(by => {
+    const slat = box(0.66, 0.05, 0.07, seatColor, 0.5);
+    slat.position.set(0, by, -0.36);
+    g.add(slat);
+  });
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  scene.add(g);
+}
+makeChair(0, -2.2, 0);
+makeChair(0,  2.2, Math.PI);
+makeChair(-2.2, 0, Math.PI / 2);
+makeChair( 2.2, 0, -Math.PI / 2);
+
+function makeMiloTin(x, z) {
+  const g = new THREE.Group();
+  const body = cyl(0.145, 0.145, 0.42, 32, 0x1a5c1a, 0.4, 0.3);
+  body.position.y = 0.21;
+  g.add(body);
+  const label = cyl(0.147, 0.147, 0.28, 32, 0x2a8c2a, 0.5);
+  label.position.y = 0.21;
+  g.add(label);
+  const topBand = cyl(0.15, 0.15, 0.04, 32, 0xd4a82a, 0.3, 0.6);
+  topBand.position.y = 0.40;
+  g.add(topBand);
+  const lid = cyl(0.155, 0.148, 0.04, 32, 0x222222, 0.4, 0.2);
+  lid.position.y = 0.44;
+  g.add(lid);
+  const badge = box(0.14, 0.1, 0.01, 0xf5c842, 0.3);
+  badge.position.set(0, 0.22, 0.148);
+  g.add(badge);
+  g.position.set(x, TABLE_Y + 0.05, z);
+  scene.add(g);
+}
+makeMiloTin(-0.55, -0.4);
+
+function makeMilkTin(x, z) {
+  const g = new THREE.Group();
+  const body = cyl(0.15, 0.15, 0.38, 32, 0xe8e8e8, 0.3, 0.5);
+  body.position.y = 0.19;
+  g.add(body);
+  const label = cyl(0.152, 0.152, 0.18, 32, 0xcc2222, 0.5);
+  label.position.y = 0.19;
+  g.add(label);
+  const stripe = cyl(0.153, 0.153, 0.04, 32, 0xffffff, 0.4);
+  stripe.position.y = 0.19;
+  g.add(stripe);
+  const rimTop = cyl(0.158, 0.15, 0.02, 32, 0xcccccc, 0.2, 0.7);
+  rimTop.position.y = 0.39;
+  g.add(rimTop);
+  const lid = cyl(0.148, 0.148, 0.025, 32, 0xdddddd, 0.2, 0.6);
+  lid.position.y = 0.41;
+  g.add(lid);
+  const rimBot = cyl(0.158, 0.15, 0.02, 32, 0xcccccc, 0.2, 0.7);
+  rimBot.position.y = 0.01;
+  g.add(rimBot);
+  g.position.set(x, TABLE_Y + 0.05, z);
+  scene.add(g);
+}
+makeMilkTin(0.5, -0.35);
+
+function makeCup(x, z, color) {
+  const g = new THREE.Group();
+  const body = cyl(0.085, 0.065, 0.14, 24, color, 0.35, 0.1);
+  body.position.y = 0.07;
+  g.add(body);
+  const inner = cyl(0.079, 0.061, 0.12, 24, 0x2a1a0a, 0.8);
+  inner.position.y = 0.085;
+  g.add(inner);
+  const saucer = cyl(0.13, 0.11, 0.018, 24, 0xf5f0e8, 0.3);
+  saucer.position.y = 0.009;
+  g.add(saucer);
+  const h1 = box(0.018, 0.07, 0.018, color, 0.4);
+  h1.position.set(0.1, 0.09, 0);
+  g.add(h1);
+  const h2 = box(0.04, 0.018, 0.018, color, 0.4);
+  h2.position.set(0.093, 0.13, 0);
+  g.add(h2);
+  const h3 = box(0.04, 0.018, 0.018, color, 0.4);
+  h3.position.set(0.093, 0.05, 0);
+  g.add(h3);
+  g.position.set(x, TABLE_Y + 0.05, z);
+  scene.add(g);
+}
+makeCup(-0.5, 0.55, 0xf5f0e8);
+makeCup(0.45, 0.5, 0xf5f0e8);
+
+const vaseGroup = new THREE.Group();
+const vaseBody = cyl(0.07, 0.05, 0.18, 16, 0x4488cc, 0.3, 0.2);
+vaseBody.position.y = 0.09;
+vaseGroup.add(vaseBody);
+const vaseMouth = cyl(0.075, 0.07, 0.025, 16, 0x3366aa, 0.3);
+vaseMouth.position.y = 0.19;
+vaseGroup.add(vaseMouth);
+const petalColors = [0xff4488, 0xff6699, 0xff3377];
+for (let i = 0; i < 5; i++) {
+  const angle = (i / 5) * Math.PI * 2;
+  const petal = sphere(0.04, petalColors[i % 3], 0.6);
+  petal.position.set(Math.cos(angle) * 0.07, 0.28, Math.sin(angle) * 0.07);
+  vaseGroup.add(petal);
+}
+const flowerCenter = sphere(0.04, 0xffee22, 0.5);
+flowerCenter.position.y = 0.29;
+vaseGroup.add(flowerCenter);
+vaseGroup.position.set(0, TABLE_Y + 0.05, 0.1);
+scene.add(vaseGroup);
+
+for (let i = 0; i < 20; i++) {
+  const r = 1.4 + Math.random() * 1.7;
+  const a = Math.random() * Math.PI * 2;
+  const pebble = sphere(0.04 + Math.random() * 0.04, 0x998877, 0.95);
+  pebble.position.set(Math.cos(a) * r, 0.02, Math.sin(a) * r);
+  scene.add(pebble);
+}
+
+function makeBush(x, z, s) {
+  const b = sphere(s, 0x2d7a2d, 0.85);
+  b.position.set(x, s * 0.9, z);
+  b.receiveShadow = true;
+  scene.add(b);
+  const b2 = sphere(s * 0.8, 0x3a8c3a, 0.85);
+  b2.position.set(x + s * 0.7, s * 0.75, z + s * 0.3);
+  b2.receiveShadow = true;
+  scene.add(b2);
+}
+const bushPositions = [
+  [-7, -5, 1.2], [7, -5, 1.0], [-7, 5, 1.3], [7, 6, 1.1],
+  [-5, -7, 0.9], [5, -7, 1.0], [0, -9, 1.4], [0, 9, 1.2],
+  [-9, 0, 1.1], [9, 0, 1.0], [-6, 7, 0.9], [6, -6, 1.2]
+];
+bushPositions.forEach(([x, z, s]) => makeBush(x, z, s));
+
+function makeTree(x, z) {
+  const trunk = cyl(0.15, 0.2, 2.0, 8, 0x6b4226, 0.9);
+  trunk.position.set(x, 1.0, z);
+  trunk.castShadow = true;
+  scene.add(trunk);
+  const foliage1 = sphere(1.2, 0x2a7a2a, 0.8);
+  foliage1.position.set(x, 2.8, z);
+  foliage1.castShadow = true;
+  scene.add(foliage1);
+  const foliage2 = sphere(0.9, 0x338833, 0.8);
+  foliage2.position.set(x + 0.5, 3.4, z - 0.3);
+  foliage2.castShadow = true;
+  scene.add(foliage2);
+}
+makeTree(-10, -3);
+makeTree(10, -4);
+makeTree(-9, 5);
+makeTree(11, 4);
+makeTree(0, -12);
+
+const clouds = [];
+function makeCloud(x, y, z) {
+  const g = new THREE.Group();
+  [[0,0,0,1.2],[1.1,0.2,0,0.9],[-1.0,0.1,0,0.85],[0.4,0.5,0,0.7]].forEach(([cx,cy,cz,cr]) => {
+    const b = new THREE.Mesh(
+      new THREE.SphereGeometry(cr, 12, 8),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.88 })
+    );
+    b.position.set(cx, cy, cz);
+    g.add(b);
+  });
+  g.position.set(x, y, z);
+  scene.add(g);
+  clouds.push(g);
+}
+makeCloud(-8, 10, -15);
+makeCloud(5, 12, -18);
+makeCloud(-3, 11, -20);
+makeCloud(12, 9, -12);
+
+let t = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  t += 0.005;
+  clouds.forEach((c, i) => { c.position.x += 0.004 * (i % 2 === 0 ? 1 : -1); });
+  vaseGroup.rotation.y = Math.sin(t * 0.8) * 0.03;
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+setTimeout(() => {
+  const loader = document.getElementById('loader');
+  loader.style.opacity = '0';
+  setTimeout(() => loader.style.display = 'none', 800);
+}, 1400);
+</script>
+</body>
+</html>
