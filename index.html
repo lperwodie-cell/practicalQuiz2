@@ -105,7 +105,7 @@
 <body>
 
 <div id="loader">
-  <h2>Setting the Scene</h2>
+  <h2>Loading Scene</h2>
   <div class="loader-bar"><div class="loader-fill"></div></div>
 </div>
 
@@ -322,50 +322,110 @@ function makeChair(x, z, rotY) {
 }
 makeChair(0, -2.2, 0);
 makeChair(0,  2.2, Math.PI);
-makeChair(-2.2, 0, Math.PI / 2);
-makeChair( 2.2, 0, -Math.PI / 2);
 
+// ── Milo Tin
 function makeMiloTin(x, z) {
   const g = new THREE.Group();
-  const body = cyl(0.145, 0.145, 0.42, 32, 0x1a5c1a, 0.4, 0.3);
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 256;
+  const c = canvas.getContext('2d');
+  c.fillStyle = '#1a5c1a';
+  c.fillRect(0, 0, 256, 256);
+  c.fillStyle = '#2a7a20';
+  c.fillRect(0, 60, 256, 136);
+  c.fillStyle = '#cc1111';
+  c.fillRect(0, 55, 256, 18);
+  c.fillStyle = '#ffffff';
+  c.font = 'bold 18px Arial';
+  c.textAlign = 'center';
+  c.fillText('NESTLE', 128, 70);
+  c.fillStyle = '#f5c200';
+  c.font = 'bold 58px Arial Black';
+  c.textAlign = 'center';
+  c.fillText('MILO', 128, 138);
+  c.strokeStyle = '#ffffff';
+  c.lineWidth = 2;
+  c.strokeText('MILO', 128, 138);
+  c.fillStyle = '#4caf50';
+  c.beginPath();
+  c.ellipse(128, 168, 55, 20, 0, 0, Math.PI*2);
+  c.fill();
+  c.fillStyle = '#ffffff';
+  c.font = 'bold 13px Arial';
+  c.fillText('ACTIV-GO', 128, 173);
+  c.fillStyle = '#154a12';
+  c.fillRect(0, 196, 256, 60);
+  c.fillStyle = '#ff0000';
+  c.fillRect(8, 8, 48, 22);
+  c.fillStyle = '#ffffff';
+  c.font = 'bold 14px Arial';
+  c.textAlign = 'left';
+  c.fillText('NEW', 12, 24);
+  const tex = new THREE.CanvasTexture(canvas);
+  const bodyGeo = new THREE.CylinderGeometry(0.148, 0.148, 0.42, 32);
+  const bodyMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.2 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.castShadow = true;
   body.position.y = 0.21;
   g.add(body);
-  const label = cyl(0.147, 0.147, 0.28, 32, 0x2a8c2a, 0.5);
-  label.position.y = 0.21;
-  g.add(label);
-  const topBand = cyl(0.15, 0.15, 0.04, 32, 0xd4a82a, 0.3, 0.6);
-  topBand.position.y = 0.40;
+  const topBand = cyl(0.152, 0.152, 0.04, 32, 0xd4a020, 0.3, 0.6);
+  topBand.position.y = 0.41;
   g.add(topBand);
-  const lid = cyl(0.155, 0.148, 0.04, 32, 0x222222, 0.4, 0.2);
-  lid.position.y = 0.44;
+  const lid = cyl(0.156, 0.149, 0.045, 32, 0x1a1a1a, 0.4, 0.3);
+  lid.position.y = 0.455;
   g.add(lid);
-  const badge = box(0.14, 0.1, 0.01, 0xf5c842, 0.3);
-  badge.position.set(0, 0.22, 0.148);
-  g.add(badge);
+  const rimBot = cyl(0.152, 0.148, 0.02, 32, 0xaaaaaa, 0.3, 0.7);
+  rimBot.position.y = 0.01;
+  g.add(rimBot);
   g.position.set(x, TABLE_Y + 0.05, z);
   scene.add(g);
 }
 makeMiloTin(-0.55, -0.4);
 
+// ── Milk Tin
 function makeMilkTin(x, z) {
   const g = new THREE.Group();
-  const body = cyl(0.15, 0.15, 0.38, 32, 0xe8e8e8, 0.3, 0.5);
-  body.position.y = 0.19;
-  g.add(body);
-  const label = cyl(0.152, 0.152, 0.18, 32, 0xcc2222, 0.5);
-  label.position.y = 0.19;
-  g.add(label);
-  const stripe = cyl(0.153, 0.153, 0.04, 32, 0xffffff, 0.4);
-  stripe.position.y = 0.19;
-  g.add(stripe);
-  const rimTop = cyl(0.158, 0.15, 0.02, 32, 0xcccccc, 0.2, 0.7);
-  rimTop.position.y = 0.39;
+  const canvas2 = document.createElement('canvas');
+  canvas2.width = 256; canvas2.height = 256;
+  const c2 = canvas2.getContext('2d');
+  c2.fillStyle = '#f0f0f0';
+  c2.fillRect(0, 0, 256, 256);
+  c2.fillStyle = '#cc0000';
+  c2.fillRect(0, 70, 256, 116);
+  c2.fillStyle = '#ffffff';
+  c2.fillRect(0, 118, 256, 22);
+  c2.fillStyle = '#cc0000';
+  c2.font = 'bold 20px Arial Black';
+  c2.textAlign = 'center';
+  c2.fillText('PEAK', 128, 135);
+  c2.fillStyle = '#ffffff';
+  c2.font = 'bold 15px Arial';
+  c2.textAlign = 'center';
+  c2.fillText('FULL CREAM', 128, 90);
+  c2.fillText('INSTANT', 128, 108);
+  c2.fillStyle = '#ffffff';
+  c2.font = 'bold 30px Arial Black';
+  c2.fillText('MILK', 128, 170);
+  c2.fillStyle = '#1565c0';
+  c2.fillRect(0, 200, 256, 56);
+  c2.fillStyle = '#ffffff';
+  c2.font = '11px Arial';
+  c2.fillText('Evaporated Filled Milk', 128, 220);
+  const tex2 = new THREE.CanvasTexture(canvas2);
+  const bodyGeo2 = new THREE.CylinderGeometry(0.152, 0.152, 0.38, 32);
+  const bodyMat2 = new THREE.MeshStandardMaterial({ map: tex2, roughness: 0.3, metalness: 0.4 });
+  const body2 = new THREE.Mesh(bodyGeo2, bodyMat2);
+  body2.castShadow = true;
+  body2.position.y = 0.19;
+  g.add(body2);
+  const rimTop = cyl(0.158, 0.152, 0.022, 32, 0xcccccc, 0.2, 0.8);
+  rimTop.position.y = 0.391;
   g.add(rimTop);
-  const lid = cyl(0.148, 0.148, 0.025, 32, 0xdddddd, 0.2, 0.6);
-  lid.position.y = 0.41;
+  const lid = cyl(0.150, 0.150, 0.028, 32, 0xdddddd, 0.2, 0.7);
+  lid.position.y = 0.414;
   g.add(lid);
-  const rimBot = cyl(0.158, 0.15, 0.02, 32, 0xcccccc, 0.2, 0.7);
-  rimBot.position.y = 0.01;
+  const rimBot = cyl(0.158, 0.152, 0.022, 32, 0xcccccc, 0.2, 0.8);
+  rimBot.position.y = 0.011;
   g.add(rimBot);
   g.position.set(x, TABLE_Y + 0.05, z);
   scene.add(g);
